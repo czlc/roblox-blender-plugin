@@ -292,9 +292,9 @@ class RBX_PT_upload(RBX_PT_sidebar, Panel):
 
         from .lib.get_selected_objects import get_selected_objects
 
-        selected_text = ", ".join(obj.name for obj in get_selected_objects(context))
+        selected_text = ", ".join(f"{obj.name} (Collection)" for obj in get_selected_objects(context))
         if selected_text:
-            layout.row().label(text="Selected Objects", icon="RESTRICT_SELECT_OFF")
+            layout.row().label(text="Upload Targets", icon="OUTLINER_COLLECTION")
             layout.box().label(text=selected_text)
 
         from .lib import status_indicators

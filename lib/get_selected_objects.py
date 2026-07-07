@@ -19,7 +19,8 @@
 # SPDX-License-Identifier: MIT
 
 """
-Returns objects selected in any outliner by the user, only including "uploadable" objects.
+Returns upload targets selected in any outliner by the user.
+If an uploadable object is selected, its first user collection is returned as the upload target.
 For a collection to be selectable, it must contain an uploadable descendant.
 """
 
@@ -49,10 +50,38 @@ def __contains_uploadable_object(collection):
         return False
 
 
+def __is_user_collection(collection):
+    return any(collection == user_collection for user_collection in bpy.data.collections)
+
+
+def __get_first_user_collection(instance):
+    if not __is_uploadable_object(instance):
+        return None
+
+    user_collection = next(
+        (collection for collection in instance.users_collection if __is_user_collection(collection)),
+        None,
+    )
+    if user_collection:
+        return user_collection
+
+    if instance.users_collection:
+        return instance.users_collection[0]
+
+    return None
+
+
+def __get_upload_target(instance):
+    if isinstance(instance, bpy.types.Collection):
+        return instance if __contains_uploadable_object(instance) else None
+
+    return __get_first_user_collection(instance)
+
+
 def get_selected_objects(context):
-    """Returns a list of selected objects across all OUTLINER and VIEW_3D contexts"""
+    """Returns a list of collection upload targets across all OUTLINER and VIEW_3D contexts"""
     current_area = context.area
-    objects = []
+    upload_targets = []
 
     # To get the complete selection we need to iterate over all outliner objects as it is possible the user
     # may have multiple open
@@ -67,15 +96,10 @@ def get_selected_objects(context):
                     with context.temp_override(area=area, region=region):
                         for selected_object in context.selected_ids:
                             # Avoid double-counting objects that are selected in multiple outliners
-                            if selected_object in objects:
+                            upload_target = __get_upload_target(selected_object)
+                            if not upload_target or upload_target in upload_targets:
                                 continue
 
-                            # Avoid counting objects that can't be uploaded (Open Cloud servers require a mesh inside the asset)
-                            if not (
-                                __is_uploadable_object(selected_object) or __contains_uploadable_object(selected_object)
-                            ):
-                                continue
+                            upload_targets.append(upload_target)
 
-                            objects.append(selected_object)
-
-    return objects
+    return upload_targets

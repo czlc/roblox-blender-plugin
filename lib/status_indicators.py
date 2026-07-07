@@ -20,6 +20,8 @@
 
 """Functions for the management and rendering of RbxStatusProperties objects"""
 
+import bpy
+
 
 def find_status(window_manager, target_object):
     """Returns the status associated with the object, if it exists"""
@@ -52,7 +54,8 @@ def clear_statuses(window_manager):
 
 def get_status_text(status):
     """Returns the text to be rendered in the UI for the status"""
-    return f"{status.target_object.name}: {status.text}"
+    target_type = "Collection" if isinstance(status.target_object, bpy.types.Collection) else "Object"
+    return f"{target_type} {status.target_object.name}: {status.text}"
 
 
 def draw_statuses(window_manager, layout):

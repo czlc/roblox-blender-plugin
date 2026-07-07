@@ -42,7 +42,7 @@ def get_issues_blocking_upload(context):
     failure_conditions = [
         (not is_logged_in, "Log in before uploading"),
         (is_processing_login_or_logout, "Wait for login or logout to finish"),
-        (not is_object_selected, "Select at least one object to upload"),
+        (not is_object_selected, "Select at least one object or collection to upload"),
         (rbx.num_objects_uploading != 0, "Wait for current upload process to finish"),
     ]
 

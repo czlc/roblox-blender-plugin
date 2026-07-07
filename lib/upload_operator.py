@@ -80,7 +80,7 @@ class RBX_OT_upload(Operator):
         issues_blocking_upload = upload_blocking_issues.get_issues_blocking_upload(context)
         num_selected_objects = len(get_selected_objects(context))
         is_plural = num_selected_objects > 1
-        default_string = f"Upload {num_selected_objects} selected object{'s' if is_plural else ''} to Roblox"
+        default_string = f"Upload {num_selected_objects} collection{'s' if is_plural else ''} to Roblox"
         error_string = ".\n".join(issues_blocking_upload)
         description = error_string or default_string
         return description
