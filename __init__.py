@@ -157,11 +157,17 @@ class RbxAddonPreferences(AddonPreferences):
         description="Export Custom Properties",
         default=True,
     )
+    bake_texture_to_vertex_colors: BoolProperty(
+        name="Bake Material Colors to Vertex Colors",
+        description="Bake each material's color into a face-corner vertex color attribute before exporting — sampling its texture (e.g. a palette) through UVs, or using its flat color — and export without the texture so the Roblox mesh has no TextureID",
+        default=True,
+    )
 
     def draw(self, context):
         self.layout.label(text="Include")
         include_box = self.layout.box()
         include_box.prop(self, "use_custom_props")
+        include_box.prop(self, "bake_texture_to_vertex_colors")
 
         self.layout.label(text="Transform")
         transform_box = self.layout.box()
@@ -286,8 +292,11 @@ class RBX_PT_upload(RBX_PT_sidebar, Panel):
 
     def draw(self, context):
         from .lib.upload_operator import RBX_OT_upload
+        from .lib.get_add_on_preferences import get_add_on_preferences
 
         layout = self.layout
+        add_on_preferences = get_add_on_preferences(context.preferences)
+        layout.row().prop(add_on_preferences, "bake_texture_to_vertex_colors")
         layout.row().operator(RBX_OT_upload.bl_idname)
 
         from .lib.get_selected_objects import get_selected_objects
