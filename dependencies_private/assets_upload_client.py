@@ -128,6 +128,9 @@ class AssetsUploadClient:
                 asset_id=asset_id,
                 request=create_request,
                 file_content=file_path,
+                # Also apply the (possibly renamed) display_name to the existing asset;
+                # without updateMask, updating the content leaves the asset name unchanged.
+                update_mask="displayName",
                 _request_timeout=request_timeout_seconds
                 if request_timeout_seconds > 0
                 else AssetsUploadClient.UPLOAD_ASSET_TIMEOUT_SECONDS,

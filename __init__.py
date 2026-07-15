@@ -300,11 +300,25 @@ class RBX_PT_upload(RBX_PT_sidebar, Panel):
         layout.row().operator(RBX_OT_upload.bl_idname)
 
         from .lib.get_selected_objects import get_selected_objects
+        from .lib import constants
 
-        selected_text = ", ".join(f"{obj.name} (Collection)" for obj in get_selected_objects(context))
-        if selected_text:
+        upload_targets = get_selected_objects(context)
+        if upload_targets:
             layout.row().label(text="Upload Targets", icon="OUTLINER_COLLECTION")
-            layout.box().label(text=selected_text)
+            box = layout.box()
+            for collection in upload_targets:
+                target_column = box.column(align=True)
+                target_column.label(text=f"{collection.name} (Collection)", icon="OUTLINER_COLLECTION")
+                if constants.RBX_PACKAGE_ID_PROPERTY_NAME in collection:
+                    # Show the stored Roblox asset id as an editable field so it can be
+                    # copied (or cleared to force a fresh upload on next publish)
+                    target_column.prop(
+                        collection,
+                        f'["{constants.RBX_PACKAGE_ID_PROPERTY_NAME}"]',
+                        text="Package ID",
+                    )
+                else:
+                    target_column.label(text="Package ID: not uploaded yet", icon="DOT")
 
         from .lib import status_indicators
 

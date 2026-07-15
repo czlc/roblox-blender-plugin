@@ -266,7 +266,8 @@ class AssetApi(object):
         all_params = [
             'asset_id',
             'file_content',
-            'request'
+            'request',
+            'update_mask'
         ]
         all_params.extend(
             [
@@ -302,6 +303,10 @@ class AssetApi(object):
             path_params['assetId'] = local_var_params['asset_id']  # noqa: E501
 
         query_params = []
+        # updateMask tells Roblox which metadata fields (e.g. displayName) to apply
+        # from the request; without it, a content update leaves the name unchanged.
+        if local_var_params.get('update_mask') is not None:
+            query_params.append(('updateMask', local_var_params['update_mask']))  # noqa: E501
 
         header_params = dict(local_var_params.get('_headers', {}))
 
