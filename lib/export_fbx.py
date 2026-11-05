@@ -272,6 +272,61 @@ def __strip_textures_from_materials(materials):
                 nodes.remove(node)
 
 
+def __get_root_bone_world_position(export_objects):
+    """Returns the rest position of the first root bone among the armatures, or None if there is none."""
+    armatures = sorted((obj for obj in export_objects if obj.type == "ARMATURE"), key=lambda obj: obj.name)
+    for armature in armatures:
+        root_bone = next((bone for bone in armature.data.bones if bone.parent is None), None)
+        if root_bone:
+            return armature.matrix_world @ root_bone.head_local
+    return None
+
+
+def __move_root_bone_to_world_origin(target_object, view_layer):
+    """Temporarily shifts the export objects so that the root bone sits at the world origin.
+
+    Roblox places the invisible RootPart of a rigged model at the origin of the FBX, so a rig
+    that is far from the origin produces a Model whose bounding box stretches from the origin
+    to the mesh. The objects move together to keep their relative placement.
+
+    delta_location is used because, unlike location, it isn't overridden by animation keyframes.
+
+    Returns (object, original delta_location) pairs for __restore_delta_locations.
+    """
+    export_objects = list(__get_export_objects(target_object))
+    root_bone_position = __get_root_bone_world_position(export_objects)
+    if root_bone_position is None or root_bone_position.length < 1e-6:
+        return []
+
+    # Children follow their parents, so only the topmost exported objects need to move
+    objects_to_move = [obj for obj in export_objects if obj.parent not in export_objects]
+    # Linked objects are read-only. Export those as they are rather than failing the upload.
+    if any(obj.library for obj in objects_to_move):
+        return []
+
+    original_delta_locations = []
+    for obj in objects_to_move:
+        shift = -root_bone_position
+        if obj.parent:
+            # delta_location is relative to the parent, whose transform may not be a pure translation
+            parent_space = obj.parent.matrix_world @ obj.matrix_parent_inverse
+            shift = parent_space.to_3x3().inverted_safe() @ shift
+        original_delta_locations.append((obj, obj.delta_location.copy()))
+        obj.delta_location += shift
+
+    view_layer.update()
+    return original_delta_locations
+
+
+def __restore_delta_locations(original_delta_locations, view_layer):
+    if not original_delta_locations:
+        return
+
+    for obj, delta_location in original_delta_locations:
+        obj.delta_location = delta_location
+    view_layer.update()
+
+
 def __export_scene_fbx(export_options, export_vertex_colors):
     if not export_vertex_colors:
         bpy.ops.export_scene.fbx(**export_options)
@@ -292,6 +347,7 @@ def export_fbx(scene, view_layer, target_object, exported_file_path, preferences
     collection = None
     temporary_mesh_data = []
     temporary_materials = []
+    original_delta_locations = []
 
     # If the object is not a collection, we'll need to create a temporary collection to house it for export
     is_collection = isinstance(target_object, bpy.types.Collection)
@@ -320,6 +376,8 @@ def export_fbx(scene, view_layer, target_object, exported_file_path, preferences
             # them and having Roblox assign a TextureID to the mesh.
             __strip_textures_from_materials(temporary_materials)
 
+        original_delta_locations = __move_root_bone_to_world_origin(target_object, view_layer)
+
         # Because we are using the use_active_collection parameter when we export, only objects from the collection
         # specified will be exported
         __export_scene_fbx(
@@ -345,6 +403,7 @@ def export_fbx(scene, view_layer, target_object, exported_file_path, preferences
             preferences.bake_texture_to_vertex_colors,
         )
     finally:
+        __restore_delta_locations(original_delta_locations, view_layer)
         # Return to the previous active LayerCollection
         view_layer.active_layer_collection = previous_active_layer_collection
         __restore_mesh_data(temporary_mesh_data, temporary_materials)
